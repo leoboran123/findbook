@@ -1,9 +1,11 @@
 package com.example.findbook.author;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -28,6 +30,10 @@ public class AuthorController {
 
     public AuthorController(AuthorRepository authRepo){
         this.authRepo = authRepo;
+    }
+    @RequestMapping("/")
+    public String welcome(){
+        return "index";
     }
 
     @RequestMapping("/find")
@@ -134,7 +140,7 @@ public class AuthorController {
         Optional<Author> author = authRepo.findByAuthorName(query);
         System.out.println(author);
         
-        if(!author.isEmpty()){
+        if(author.isEmpty()){
             // No author record with this id in database...
             HttpClient client = HttpClient.newHttpClient();
             HttpClient name = HttpClient.newHttpClient();
@@ -142,36 +148,45 @@ public class AuthorController {
             try {
                 // HTTP isteği oluştur
 
+                String url_query = URLEncoder.encode(query, StandardCharsets.UTF_8);
+
+                
+                System.out.println(url_query);
+
                 // If looking for author's works by name;
                 HttpRequest request = HttpRequest.newBuilder()
-                    .uri(new URI(String.format("https://openlibrary.org/authors/%s/works.json",query)))
+                    .uri(new URI(String.format("https://openlibrary.org/search/authors.json?q=%s",url_query)))
                     .GET()
                     .build();
                 
                     
                 // İsteği gönder ve yanıtı al
-                HttpResponse<String> authors_works = client.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> authors = client.send(request, HttpResponse.BodyHandlers.ofString());
                 
 
-                HttpRequest req = HttpRequest.newBuilder()
-                .uri(new URI(String.format("https://openlibrary.org/authors/%s.json",query)))
+                JSONObject jsonObject = new JSONObject(authors.body());
+                JSONArray docsArray  = jsonObject.getJSONArray("docs");
+                JSONObject doc = docsArray.getJSONObject(0);
+                String nm = doc.getString("name");
+                String ky = doc.getString("key");
+                
+
+                // Get author's works by Id and return;
+                HttpRequest request2 = HttpRequest.newBuilder()
+                .uri(new URI(String.format("https://openlibrary.org/authors/%s/works.json",ky)))
                 .GET()
                 .build();
 
-                HttpResponse<String> name_response = client.send(req, HttpResponse.BodyHandlers.ofString());
-                JSONObject jsonObject = new JSONObject(name_response.body());
-                
-                
-                String authorName = jsonObject.getString("name");
-                String author_key = query;
+                HttpResponse<String> authors_works = client.send(request2, HttpResponse.BodyHandlers.ofString());
+
+
+                // İsteği gönder ve yanıtı al
                 
                 // Get the record and apply it to the database...
-                Author c_author = new Author(null, author_key, authorName);
+                Author c_author = new Author(null, ky, nm);
                 authRepo.create(c_author);
 
-                // test
 
-                System.out.println(authRepo.findAll());
 
                 // Show the record...
                 return authors_works.body();
@@ -181,80 +196,50 @@ public class AuthorController {
             return "oldu";
 
         }else{
-
             HttpClient client = HttpClient.newHttpClient();
-            try{
+            HttpClient name = HttpClient.newHttpClient();
+            try {
+                String url_query = URLEncoder.encode(query, StandardCharsets.UTF_8);
 
                 
-                // If looking for author's works;
+                System.out.println(url_query);
+
+                // If looking for author's works by name;
                 HttpRequest request = HttpRequest.newBuilder()
-                .uri(new URI(String.format("https://openlibrary.org/authors/%s/works.json",query)))
+                    .uri(new URI(String.format("https://openlibrary.org/search/authors.json?q=%s",url_query)))
+                    .GET()
+                    .build();
+                
+                    
+                // İsteği gönder ve yanıtı al
+                HttpResponse<String> authors = client.send(request, HttpResponse.BodyHandlers.ofString());
+                
+
+                JSONObject jsonObject = new JSONObject(authors.body());
+                JSONArray docsArray  = jsonObject.getJSONArray("docs");
+                JSONObject doc = docsArray.getJSONObject(0);
+                String nm = doc.getString("name");
+                String ky = doc.getString("key");
+                
+
+                // Get author's works by Id and return;
+                HttpRequest request2 = HttpRequest.newBuilder()
+                .uri(new URI(String.format("https://openlibrary.org/authors/%s/works.json",ky)))
                 .GET()
                 .build();
-                
-                
-                // İsteği gönder ve yanıtı al
-                HttpResponse<String> authors_works = client.send(request, HttpResponse.BodyHandlers.ofString());
 
+                HttpResponse<String> authors_works = client.send(request2, HttpResponse.BodyHandlers.ofString());   
+                
                 return authors_works.body();
-            }catch (Exception e) {
+            } catch (Exception e) {
                 System.out.println(e);
+
             }
+            
+            
+            
             return "oldu";
         }
         
-    }
-
-    public void getWithApiByAuthorName(){
-        // get the records with api, then save it to the database
-
-        HttpClient client = HttpClient.newHttpClient();
-
-        try {
-            // HTTP isteği oluştur
-
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(new URI("https://jsonplaceholder.typicode.com/posts"))
-                .GET()
-                .build();
-
-            // İsteği gönder ve yanıtı al
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            // Yanıtı yazdır
-            System.out.println("HTTP Durum Kodu: " + response.statusCode());
-            System.out.println("JSON Yanıt:");
-            System.out.println(response.body());
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-        
-        
-    }
-
-    @RequestMapping(value="/create",
-                method=RequestMethod.POST,
-                consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public void getWithApiByAuthorId(@RequestBody MultiValueMap<String, String> formData){
-        HttpClient client = HttpClient.newHttpClient();
-
-        try {
-            // HTTP isteği oluştur
-
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(new URI("https://jsonplaceholder.typicode.com/posts"))
-                .GET()
-                .build();
-
-            // İsteği gönder ve yanıtı al
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            // Yanıtı yazdır
-            System.out.println("HTTP Durum Kodu: " + response.statusCode());
-            System.out.println("JSON Yanıt:");
-            System.out.println(response.body());
-        } catch (Exception e) {
-            System.out.println(e);
-        }
     }
 }
