@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>
+        Find author by author ID
+    </h1>
+
+    <form action="/search" method="POST">
+        <label for="query"></label>
+        <input type="text" name="query">
+        <button type="submit">Send</button>
+    </form>
+    <br>
+    <br>
+
+    <h1>
+        Find author by name
+    </h1>
+
+    <form action="/searchByName" method="POST">
+        <label for="query"></label>
+        <input type="text" name="query">
+        <button type="submit">Send</button>
+    </form>
+
+
+</body>
+</html>
